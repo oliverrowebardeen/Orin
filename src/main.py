@@ -11,6 +11,7 @@ from .reasoning import one_reasoning_run, self_consistency_reasoning
 CYAN = "\033[96m"
 BOLD = "\033[1m"
 RESET = "\033[0m"
+GREY = "\033[90m"
 
 LOG_DIR = os.path.join(os.path.dirname(__file__), "..", "logs")
 
@@ -132,9 +133,9 @@ def main():
         log_session(question, best_answer, mode=mode, samples=all_answers)
     else:
         mode="single_run"
-        print(f"\n[orin] Mode: single chain-of-thought run")
-
-        # Start loading animation
+        print(f"\n[orin] Mode: single chain-of-thought run\n")
+        
+        # Start spinner during model loading
         stop_event = threading.Event()
         loading_thread = threading.Thread(target=loading_animation, args=(stop_event,))
         loading_thread.start()
@@ -143,14 +144,19 @@ def main():
             answer = one_reasoning_run(
                 question=question,
                 temperature=args.temp,
+                stream=True,
             )
         finally:
+            # Stop spinner when streaming starts
             stop_event.set()
             loading_thread.join()
+            # Clear spinner line
+            sys.stdout.write('\r' + ' ' * 30 + '\r')
+            sys.stdout.flush()
 
-        print("\n=== Orin's answer ===\n")
-        print(answer)
-        print("\n=====================\n")
+        if not answer.strip():
+            print(f"\n{CYAN}No final answer generated{RESET}\n")
+        print(f"\n{CYAN}==================={RESET}\n")
 
         log_session(question, answer, mode=mode, samples=None)
 

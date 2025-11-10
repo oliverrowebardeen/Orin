@@ -33,17 +33,73 @@ def message_builder(question: str) -> List[Dict[str, str]]:
         {"role": "user", "content": question}
     ]
 
+def should_show_thinking(question: str) -> bool:
+    """
+    Determine if we should show chain-of-thought thinking for this question.
+    Returns True for complex questions, False for simple ones.
+    """
+    question_lower = question.lower().strip()
+    
+    # Simple greetings and basic questions - no thinking needed
+    simple_patterns = [
+        r'^(hi|hello|hey|yo)$',
+        r'^(how are you|how\'s it going)$',
+        r'^(what is your name|who are you)$',
+        r'^(thanks|thank you|bye|goodbye)$',
+        r'^(yes|no|maybe|ok|okay)$',
+        r'^(help|\?)$',
+    ]
+    
+    # Complex questions that benefit from thinking
+    complex_patterns = [
+        r'what is',
+        r'how does',
+        r'why does',
+        r'explain',
+        r'describe',
+        r'compare',
+        r'analyze',
+        r'evaluate',
+        r'reasoning',
+        r'interleaved',
+        r'machine learning',
+        r'neural network',
+        r'attention mechanism',
+    ]
+    
+    import re
+    
+    # Check if it's a simple pattern
+    for pattern in simple_patterns:
+        if re.match(pattern, question_lower):
+            return False
+    
+    # Check if it contains complex indicators
+    for pattern in complex_patterns:
+        if re.search(pattern, question_lower):
+            return True
+    
+    # Default: if it's longer than 10 words, show thinking
+    return len(question.split()) > 10
+
 def one_reasoning_run(
     question: str,
     temperature: float = 0.2,
+    stream: bool = True,
 ) -> str:
     """
     One call to the model with chain-of-thought reasoning.
+    If stream=True, shows thinking in real-time for complex questions.
     """
+    # Determine if we should show thinking
+    show_thinking = should_show_thinking(question)
+    
     messages = message_builder(question)
     response = chat_with_llamacpp(
         messages=messages,
         temperature=temperature,
+        stream=stream and show_thinking,  # Only stream if thinking should be shown
+        show_thinking=show_thinking,  # Pass this to the client
     )
 
     return response
