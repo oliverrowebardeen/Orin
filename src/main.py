@@ -7,8 +7,6 @@ from datetime import datetime
 from typing import List
 from .reasoning import one_reasoning_run, self_consistency_reasoning
 
-DEFAULT_MODEL = "deepseek-r1:8b"
-
 # ANSI color codes
 CYAN = "\033[96m"
 BOLD = "\033[1m"
@@ -69,6 +67,7 @@ def log_session(
     ensure_log_dir()
 
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_path = os.path.join(LOG_DIR, f"session_{ts}.txt")
 
     with open(log_path, "w", encoding="utf-8") as f:
         f.write("# Orin session\n")
@@ -82,7 +81,7 @@ def log_session(
             f.write("=== All samples (self-consistency) ===\n")
             for i, s in enumerate(samples, start=1):
                 f.write(f"\n--- Sample {i} ---\n")
-                f.write(s.strip + "\n")
+                f.write(s.strip() + "\n")
             f.write("\n=== Chosen answer ===\n")
 
         f.write(final_answer.strip() + "\n")
@@ -102,7 +101,6 @@ def main():
         description="Orin: compact local reasoning engine (v0.1 - CoT + self-consistency)"
     )
     parser.add_argument("question", nargs="*", help="Your question or prompt for Orin.")
-    parser.add_argument("--model", default=DEFAULT_MODEL, help=f"Ollama model name (default: {DEFAULT_MODEL})")
     parser.add_argument("--temp", type=float, default=0.2, help="Temperature for single-run reasoning (default: 0.2)")
     parser.add_argument("--samples", type=int, default=1, help="If >1, use self-consistency with this many samples (default: 1)")
 
@@ -121,8 +119,7 @@ def main():
         try:
             best_answer, all_answers = self_consistency_reasoning(
                 question=question,
-                model=args.model,
-                n_samples=args.samples,
+                num_runs=args.samples,
                 temperature=0.7
             )
         finally:
@@ -145,7 +142,6 @@ def main():
         try:
             answer = one_reasoning_run(
                 question=question,
-                model=args.model,
                 temperature=args.temp,
             )
         finally:

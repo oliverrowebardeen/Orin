@@ -1,10 +1,10 @@
 from typing import List, Dict, Tuple
-from .ollama_client import chat_with_ollama
+from .llamacpp_client import chat_with_llamacpp
 
 def message_builder(question: str) -> List[Dict[str, str]]:
     """
     Build the list of messages that we send to the model.
-    The model sees these as a structured converstaion.
+    The model sees these as a structured conversation.
     """
 
     system_prompt = (
@@ -35,31 +35,27 @@ def message_builder(question: str) -> List[Dict[str, str]]:
 
 def one_reasoning_run(
     question: str,
-    model: str,
     temperature: float = 0.2,
 ) -> str:
     """
     One call to the model with chain-of-thought reasoning.
     """
     messages = message_builder(question)
-    response = chat_with_ollama(
-        model=model,
+    response = chat_with_llamacpp(
         messages=messages,
         temperature=temperature,
-        stream=False,
     )
 
     return response
 
 def self_consistency_reasoning(
     question: str,
-    model: str,
     temperature: float = 0.7,
     num_runs: int = 5,
 ) -> Tuple[str, List[str]]:
     """
     self_consistency_reasoning = run the model multiple times, pick the most common answer.
-    - n_samples: how many runs to do.
+    - num_runs: how many runs to do.
     - higher temperature = more diverse answers, but also more diverse errors.
     returns both:
     - the most common answer
@@ -68,10 +64,9 @@ def self_consistency_reasoning(
 
     samples: List[str] = []
 
-    for i in range(n_samples):
-        ans = single_reasoning_run(
+    for i in range(num_runs):
+        ans = one_reasoning_run(
             question=question,
-            model=model,
             temperature=temperature,
         )
         samples.append(ans)
