@@ -1,0 +1,9 @@
+# Core dependencies for Orin Reasoning Engine
+typer>=0.9.0
+PyYAML>=6.0
+requests>=2.31.0
+
+# Optional dependencies for future RAG implementation
+# sentence-transformers>=2.2.2
+# faiss-cpu>=1.7.4
+# pypdf>=3.16.0
