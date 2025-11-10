@@ -31,19 +31,25 @@ def loading_animation(stop_event):
 
 def print_orin_banner():
     """
-    Prints an ASCII art banner when Orin starts up.
-    Uses simple ANSI escape codes for color (optional).
+    Prints a blocky ASCII art banner when Orin starts up.
+    Filled with cyan color for maximum impact.
     """
+    # Cyan background with black text for filled effect
+    CYAN_BG = "\033[46m"
+    BLACK = "\033[30m"
 
-    banner = f"""{CYAN}{BOLD}
-   ___       _       
-  / _ \\ _ __(_)_ __  
- | | | | '__| | '_ \\ 
- | |_| | |  | | | | |
-  \\___/|_|  |_|_| |_|   {RESET}
-
-{BOLD}Orin — local reasoning experiment (v0.1){RESET}
---------------------------------------------
+    banner = f"""
+{CYAN}╔══════════════════════════════════════════════════════════╗
+║  {CYAN_BG}{BLACK} ██████╗ ██████╗ ██╗███╗   ██╗ {RESET}{CYAN}                        ║
+║  {CYAN_BG}{BLACK}██╔═══██╗██╔══██╗██║████╗  ██║ {RESET}{CYAN}                        ║
+║  {CYAN_BG}{BLACK}██║   ██║██████╔╝██║██╔██╗ ██║ {RESET}{CYAN}                        ║
+║  {CYAN_BG}{BLACK}██║   ██║██╔══██╗██║██║╚██╗██║ {RESET}{CYAN}                        ║
+║  {CYAN_BG}{BLACK}╚██████╔╝██║  ██║██║██║ ╚████║ {RESET}{CYAN}                        ║
+║  {CYAN_BG}{BLACK} ╚═════╝ ╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝ {RESET}{CYAN}                        ║
+║                                                          ║
+║  {BOLD}Local Reasoning Engine v0.2{RESET}{CYAN}                              ║
+║  DeepSeek-R1-Distill-Qwen-1.5B • CPU-Optimized          ║
+╚══════════════════════════════════════════════════════════╝{RESET}
 """
     print(banner)
 
@@ -91,7 +97,7 @@ def log_session(
 
 def main():
     """
-    Defines CLi for Orin
+    Defines CLI for Orin
     Handles:
     - parsing input
     - calling reasoning functions
@@ -99,14 +105,26 @@ def main():
     """
 
     parser = argparse.ArgumentParser(
-        description="Orin: compact local reasoning engine (v0.1 - CoT + self-consistency)"
+        description="Orin: compact local reasoning engine (v0.2 - CoT + self-consistency + REPL)"
     )
-    parser.add_argument("question", nargs="*", help="Your question or prompt for Orin.")
+    parser.add_argument("question", nargs="*", help="Your question or prompt for Orin. If omitted, starts interactive REPL mode.")
     parser.add_argument("--temp", type=float, default=0.2, help="Temperature for single-run reasoning (default: 0.2)")
     parser.add_argument("--samples", type=int, default=1, help="If >1, use self-consistency with this many samples (default: 1)")
+    parser.add_argument("--repl", action="store_true", help="Start interactive REPL mode (default if no question provided)")
+    parser.add_argument("--no-repl", action="store_true", help="Force single-shot mode even without question")
 
     args = parser.parse_args()
 
+    # Determine if we should use REPL mode
+    use_repl = args.repl or (not args.question and not args.no_repl)
+
+    if use_repl:
+        # Start interactive REPL
+        from .repl import run_repl
+        run_repl()
+        return
+
+    # Single-shot CLI mode
     question = " ".join(args.question) if args.question else input("Enter your question for Orin: ")
 
     if args.samples > 1:

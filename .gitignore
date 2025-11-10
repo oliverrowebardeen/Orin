@@ -1,14 +1,41 @@
 # Python
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.so
+.Python
 env/
-logs/
+venv/
+
+# Logs
+logs/*.txt
+logs/**/*.txt
 
 # Model and data files
-models/
+models/*.gguf
+models/*.bin
 rag_index/
 rag_docs/
+
+# Binary
+bin/llama/llama-cli
 
 # OS
 .DS_Store
 Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+*.sublime-*
+
+# Environment
+.env
+
+# Temporary
+tmp/
+temp/
+*.tmp

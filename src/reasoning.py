@@ -93,13 +93,13 @@ def one_reasoning_run(
     """
     # Determine if we should show thinking
     show_thinking = should_show_thinking(question)
-    
+
     messages = message_builder(question)
     response = chat_with_llamacpp(
         messages=messages,
         temperature=temperature,
-        stream=stream and show_thinking,  # Only stream if thinking should be shown
-        show_thinking=show_thinking,  # Pass this to the client
+        stream=stream,  # Always stream to show output in real-time
+        show_thinking=show_thinking,  # Pass this to control thinking display
     )
 
     return response
