@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.pyc
+env/
+logs/
+
+# Model and data files
+models/
+rag_index/
+rag_docs/
+
+# OS
+.DS_Store
+Thumbs.db
