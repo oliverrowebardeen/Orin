@@ -23,7 +23,7 @@ def loading_animation(stop_event):
     spinner = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
     idx = 0
     while not stop_event.is_set():
-        sys.stdout.write(f'\r{CYAN}{spinner[idx % len(spinner)]}{RESET}\n')
+        sys.stdout.write(f'\r{CYAN}{spinner[idx % len(spinner)]}{RESET}')
         sys.stdout.flush()
         idx += 1
         time.sleep(0.1)
@@ -159,4 +159,5 @@ def main():
         log_session(question, answer, mode=mode, samples=None)
 
 if __name__ == "__main__":
+    print_orin_banner()
     main()
