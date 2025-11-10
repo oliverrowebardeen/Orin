@@ -92,5 +92,31 @@ def main():
         mode = f"self_consistency_{args.samples}"
         print(f"\n[orin] Mode: self-consistency with {args.samples} samples")
         best_answer, all_answers = self_consistency(
-            
+            question=question,
+            model=args.model,
+            n_samples=args.samples,
+            temperature=0.7
         )
+
+        print(f"\n{CYAN}=== Orin's chosen answer (self-consistency) ==={RESET}\n")
+        print(best_answer)
+        print(f"\n{CYAN}=============================================={RESET}\n")
+        log_session(question, best_answer, mode=mode, samples=all_answers)
+    else:
+        mode="single_run"
+        print(f"\n[orin] Mode: single chain-of-thought run")
+
+        answer = single_reasoning_run(
+            question=question,
+            model=args.model,
+            temperature=args.temp,
+        )
+
+        print("\n=== Orin's answer ===\n")
+        print(answer)
+        print("\n=====================\n")
+
+        log_session(question, answer, mode=mode, samples=None)
+
+if _name_ == "_main_":
+    main()
