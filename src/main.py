@@ -82,7 +82,7 @@ def main():
     parser.add_argument("question", nargs="*", help="Your question or prompt for Orin.")
     parser.add_argument("--model", default=DEFAULT_MODEL, help=f"Ollama model name (default: {DEFAULT_MODEL})")
     parser.add_argument("--temp", type=float, default=0.2, help="Temperature for single-run reasoning (default: 0.2)")
-    parser.add_argument("--samples", type=int, default=1 help="If >1, use self-consistency with this many samples (default: 1)")
+    parser.add_argument("--samples", type=int, default=1, help="If >1, use self-consistency with this many samples (default: 1)")
 
     args = parser.parse_args()
 
