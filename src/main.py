@@ -78,6 +78,19 @@ def main():
 
     parser = argparse.ArgumentParser(
         description="Orin: compact local reasoning engine (v0.1 - CoT + self-consistency)"
-
     )
-    
+    parser.add_argument("question", nargs="*", help="Your question or prompt for Orin.")
+    parser.add_argument("--model", default=DEFAULT_MODEL, help=f"Ollama model name (default: {DEFAULT_MODEL})")
+    parser.add_argument("--temp", type=float, default=0.2, help="Temperature for single-run reasoning (default: 0.2)")
+    parser.add_argument("--samples", type=int, default=1 help="If >1, use self-consistency with this many samples (default: 1)")
+
+    args = parser.parse_args()
+
+    question = " ".join(args.question) if args.question else input("Enter your question for Orin: ")
+
+    if args.samples > 1:
+        mode = f"self_consistency_{args.samples}"
+        print(f"\n[orin] Mode: self-consistency with {args.samples} samples")
+        best_answer, all_answers = self_consistency(
+            
+        )
