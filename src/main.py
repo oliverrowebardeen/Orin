@@ -1,12 +1,34 @@
 import argparse
 import os
+import threading
+import time
+import sys
 from datetime import datetime
 from typing import List
-from .reasoning import single_reasoning_run, self_consistency_reasoning
+from .reasoning import one_reasoning_run, self_consistency_reasoning
 
 DEFAULT_MODEL = "deepseek-r1:8b"
 
-LOG_DIR = os.path.join(os.path.dirname(_file_), "..", "logs")
+# ANSI color codes
+CYAN = "\033[96m"
+BOLD = "\033[1m"
+RESET = "\033[0m"
+
+LOG_DIR = os.path.join(os.path.dirname(__file__), "..", "logs")
+
+def loading_animation(stop_event):
+    """
+    Display a loading animation while the model is working.
+    """
+    spinner = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+    idx = 0
+    while not stop_event.is_set():
+        sys.stdout.write(f'\r{CYAN}{spinner[idx % len(spinner)]}{RESET}\n')
+        sys.stdout.flush()
+        idx += 1
+        time.sleep(0.1)
+    sys.stdout.write('\r' + ' ' * 30 + '\r')  # Clear the line
+    sys.stdout.flush()
 
 def print_orin_banner():
     """
@@ -91,12 +113,21 @@ def main():
     if args.samples > 1:
         mode = f"self_consistency_{args.samples}"
         print(f"\n[orin] Mode: self-consistency with {args.samples} samples")
-        best_answer, all_answers = self_consistency(
-            question=question,
-            model=args.model,
-            n_samples=args.samples,
-            temperature=0.7
-        )
+        # Start loading animation
+        stop_event = threading.Event()
+        loading_thread = threading.Thread(target=loading_animation, args=(stop_event,))
+        loading_thread.start()
+        
+        try:
+            best_answer, all_answers = self_consistency_reasoning(
+                question=question,
+                model=args.model,
+                n_samples=args.samples,
+                temperature=0.7
+            )
+        finally:
+            stop_event.set()
+            loading_thread.join()
 
         print(f"\n{CYAN}=== Orin's chosen answer (self-consistency) ==={RESET}\n")
         print(best_answer)
@@ -106,11 +137,20 @@ def main():
         mode="single_run"
         print(f"\n[orin] Mode: single chain-of-thought run")
 
-        answer = single_reasoning_run(
-            question=question,
-            model=args.model,
-            temperature=args.temp,
-        )
+        # Start loading animation
+        stop_event = threading.Event()
+        loading_thread = threading.Thread(target=loading_animation, args=(stop_event,))
+        loading_thread.start()
+        
+        try:
+            answer = one_reasoning_run(
+                question=question,
+                model=args.model,
+                temperature=args.temp,
+            )
+        finally:
+            stop_event.set()
+            loading_thread.join()
 
         print("\n=== Orin's answer ===\n")
         print(answer)
@@ -118,5 +158,5 @@ def main():
 
         log_session(question, answer, mode=mode, samples=None)
 
-if _name_ == "_main_":
+if __name__ == "__main__":
     main()
