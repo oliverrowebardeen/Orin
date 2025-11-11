@@ -100,14 +100,11 @@ def _stream_llama_output(cmd, show_thinking=True):
         cmd,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,  # Combine stderr into stdout
-        stdin=subprocess.PIPE,  # Provide a pipe (not DEVNULL)
+        stdin=subprocess.DEVNULL,
         text=True,
     )
 
     try:
-        # Close stdin immediately so llama knows there's no more input
-        proc.stdin.close()
-
         # Wait for process to complete (with 60s timeout)
         stdout, _ = proc.communicate(timeout=60)
     except subprocess.TimeoutExpired:
