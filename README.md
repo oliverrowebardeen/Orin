@@ -109,9 +109,7 @@ Orin/
 ## Documentation
 
 - **[QUICKSTART.md](QUICKSTART.md)** - Getting started guide
-- **[TECHNICAL_GUIDE.md](TECHNICAL_GUIDE.md)** - How everything works (for future me)
-- **[IMPROVEMENTS.md](IMPROVEMENTS.md)** - Technical details of v0.2 changes
-- **[CHANGELOG.md](CHANGELOG.md)** - Version history
+- **[COMPLETE_CHANGELOG.md](COMPLETE_CHANGELOG.md)** - Version history
 
 ---
 
@@ -156,8 +154,8 @@ All 5 tests should pass:
 
 ### Future
 - RAG integration
-- Voice I/O
-- Web UI
+- Speed improvements
+- Tool use
 - Fine-tuning pipeline
 
 ---
@@ -177,4 +175,4 @@ MIT - do whatever you want with this.
 
 **Built by Obard** • Version 0.2 • November 2025
 
-*Small models, big thinking*
+*Small model, big thinking*
