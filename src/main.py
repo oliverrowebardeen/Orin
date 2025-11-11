@@ -49,6 +49,7 @@ def print_orin_banner():
 ║                                                          ║
 ║  {BOLD}Local Reasoning Engine v0.2{RESET}{CYAN}                              ║
 ║  DeepSeek-R1-Distill-Qwen-1.5B • CPU-Optimized          ║
+║  {GREY}Small models, big thinking{RESET}{CYAN}                                ║
 ╚══════════════════════════════════════════════════════════╝{RESET}
 """
     print(banner)

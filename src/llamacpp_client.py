@@ -70,13 +70,13 @@ def chat_with_llamacpp(
         str(max_tokens),
         "--temp",
         str(temperature),
-        "-ngl", "0",  # CPU-only
-        "--ctx-size", "1024",  # Small context for speed on weak hardware
-        "--threads", "4",  # Fewer threads (8 causes thrashing on weak CPUs)
+        "-ngl", "0",  # CPU-only (explicitly disable GPU)
+        "-c", "2048",  # Context window (enough for conversation history)
+        "-t", "4",  # 4 threads (good for weak CPUs)
         "--no-mmap",  # Better for USB drives
-        "--log-disable",  # Disable logging
-        "-b", "256",  # Small batch (less RAM, faster on weak hardware)
-        "--n-predict", str(max_tokens),  # Explicit prediction limit
+        "-b", "256",  # Batch size (balanced for weak hardware)
+        "--log-disable",  # Disable llama.cpp logs
+        "--single-turn",  # Run for single turn, don't enter interactive mode
     ]
 
     if stream:
@@ -87,81 +87,90 @@ def chat_with_llamacpp(
 
 def _stream_llama_output(cmd, show_thinking=True):
     """
-    Stream output from llama-cli in real-time.
-    Simplified for maximum speed - no fancy tag parsing.
-
-    Args:
-        cmd: Command to run
-        show_thinking: Whether to show the model's thinking process
+    Stream output from llama-cli with robust filtering.
+    ULTRA-SIMPLIFIED VERSION - wait for completion, then process.
     """
-    import sys
     import re
 
-    # Define colors
     GREY = '\033[90m'
     RESET = '\033[0m'
 
+    # Run process and wait for completion (with timeout)
     proc = subprocess.Popen(
         cmd,
         stdout=subprocess.PIPE,
-        stderr=subprocess.DEVNULL,  # Ignore stderr for speed
-        stdin=subprocess.DEVNULL,
+        stderr=subprocess.STDOUT,  # Combine stderr into stdout
+        stdin=subprocess.PIPE,  # Provide a pipe (not DEVNULL)
         text=True,
-        bufsize=1,
     )
 
-    full_response = ""
-    seen_assistant = False
-    in_think_tag = False
-
     try:
-        for line in iter(proc.stdout.readline, ''):
-            # Skip loading/system info (minimal checks for speed)
-            if 'llama_' in line or 'system_info:' in line or 'main:' in line:
-                continue
+        # Close stdin immediately so llama knows there's no more input
+        proc.stdin.close()
 
+        # Wait for process to complete (with 60s timeout)
+        stdout, _ = proc.communicate(timeout=60)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        stdout, _ = proc.communicate()
+    except Exception as e:
+        proc.kill()
+        return f"Error: {e}"
+
+    if not stdout:
+        return "Error: No output from model"
+
+    # Now process the complete output
+    lines = stdout.split('\n')
+    output_lines = []
+    started = False
+    in_think = False
+
+    # Filter spam and extract generation
+    for line in lines:
+        # Skip debug output
+        if any(x in line for x in ['warning:', 'llama_', 'print_info:', 'sampler',
+                                     'generate: n_ctx', 'llama_perf', 'main:', 'build:',
+                                     'Press Ctrl', 'EOF by user', 'memory breakdown',
+                                     'interactive mode', 'system_info:', 'load:']):
+            continue
+
+        # Start capturing at "Assistant:"
+        if 'Assistant:' in line:
+            started = True
+            line = line.split('Assistant:', 1)[-1]
             if not line.strip():
                 continue
 
-            # Wait for Assistant: marker
-            if not seen_assistant:
-                if "Assistant:" in line:
-                    seen_assistant = True
-                    line = line.split("Assistant:", 1)[-1]
-                    if not line.strip():
-                        continue
-                else:
-                    continue
+        if not started:
+            continue
 
-            # Simple tag detection (line-based, not char-based)
-            if '<think>' in line:
-                in_think_tag = True
-                line = line.replace('<think>', '')
+        # Handle thinking tags
+        if '<think>' in line:
+            in_think = True
+            line = line.replace('<think>', '')
+            if show_thinking:
+                print(f"\n{GREY}", end='', flush=True)
 
-            if '</think>' in line:
-                in_think_tag = False
-                line = line.replace('</think>', '')
+        if '</think>' in line:
+            if show_thinking:
+                print(f"{RESET}", end='', flush=True)
+            in_think = False
+            line = line.replace('</think>', '')
 
-            # Print and collect output
-            if in_think_tag:
-                if show_thinking:
-                    print(f"{GREY}{line}{RESET}", end='', flush=True)
-            else:
-                # Always print non-thinking content
-                print(line, end='', flush=True)
-                full_response += line
+        # Print and collect
+        if line.strip():  # Skip empty lines
+            output_lines.append(line)
+            if not (in_think and not show_thinking):
+                print(line, flush=True)
 
-    except KeyboardInterrupt:
-        proc.terminate()
-        if proc.poll() is None:
-            proc.kill()
-    finally:
-        proc.wait()
+    result = '\n'.join(output_lines)
 
-    # Clean up any remaining tags
-    full_response = re.sub(r'<think>.*?</think>', '', full_response, flags=re.DOTALL)
+    # Clean up thinking tags if not showing
+    if not show_thinking:
+        result = re.sub(r'<think>.*?</think>', '', result, flags=re.DOTALL)
 
-    return full_response.strip()
+    return result.strip()
 
 
 def _get_llama_output(cmd):
