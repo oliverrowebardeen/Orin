@@ -8,24 +8,8 @@ def message_builder(question: str) -> List[Dict[str, str]]:
     """
 
     system_prompt = (
-        "You are Orin, a thoughtful AI companion and reasoning partner running locally on this machine. "
-        "You were created by Obard to be a helpful, reliable assistant for technical and analytical tasks.\n\n"
-        
-        "Your core strengths:\n"
-        "- Clear, methodical thinking with step-by-step reasoning\n"
-        "- Honest assessment of what you know and don't know\n"
-        "- Practical, actionable solutions to problems\n"
-        "- Friendly but professional communication style\n\n"
-        
-        "When approaching problems:\n"
-        "1. Break down complex questions into manageable components\n"
-        "2. Show your reasoning process transparently\n"
-        "3. Consider multiple perspectives when relevant\n"
-        "4. Provide clear, well-structured answers\n"
-        "5. Acknowledge uncertainty and suggest verification steps\n\n"
-        
-        "You're here to help think through problems, not just provide answers. "
-        "Engage with curiosity, ask clarifying questions when needed, and always strive to be genuinely helpful."
+        "You are Orin, a helpful AI assistant. Be concise, clear, and accurate. "
+        "Think step-by-step for complex questions."
     )
 
     return [
@@ -136,5 +120,71 @@ def self_consistency_reasoning(
     best_answer = max(counts.items(), key=lambda kv: kv[1])[0]
 
     return best_answer, samples
-    
-    
+
+
+def interleaved_reasoning(
+    question: str,
+    temperature: float = 0.3,
+    max_iterations: int = 2,
+) -> str:
+    """
+    Interleaved reasoning: model generates, verifies, and refines its answer.
+
+    Process:
+    1. Generate initial answer with thinking
+    2. Ask model to verify/critique its answer
+    3. If issues found, generate refined answer
+    4. Repeat up to max_iterations
+
+    Args:
+        question: User's question
+        temperature: Sampling temperature
+        max_iterations: Max verify-refine cycles
+
+    Returns:
+        Final refined answer
+    """
+
+    # Step 1: Generate initial answer
+    messages = message_builder(question)
+    messages[0]["content"] += (
+        " After answering, briefly verify your reasoning."
+    )
+
+    initial_response = chat_with_llamacpp(
+        messages=messages,
+        temperature=temperature,
+        stream=False,
+        show_thinking=False,
+    )
+
+    current_answer = initial_response
+
+    # Step 2-N: Iterative verification and refinement
+    for iteration in range(max_iterations):
+        # Ask model to verify its own answer
+        verify_messages = messages + [
+            {"role": "assistant", "content": current_answer},
+            {"role": "user", "content": (
+                "Review your answer. Is it accurate and complete? "
+                "If you find any issues, provide a corrected version. "
+                "If it's correct, just say 'VERIFIED'."
+            )}
+        ]
+
+        verification = chat_with_llamacpp(
+            messages=verify_messages,
+            temperature=temperature * 0.8,  # Lower temp for verification
+            stream=False,
+            show_thinking=False,
+        )
+
+        # If model verifies answer, we're done
+        if "VERIFIED" in verification.upper():
+            break
+
+        # Otherwise, use the corrected version
+        current_answer = verification
+
+    return current_answer
+

@@ -30,30 +30,15 @@ class ConversationSession:
     def __init__(self):
         self.messages: List[Dict[str, str]] = []
         self.show_thinking_mode = "auto"  # auto, always, never
+        self.reasoning_mode = "standard"  # standard, interleaved
         self.start_time = datetime.now()
         self.total_tokens = 0
         self.total_questions = 0
 
-        # Add system message
+        # Shorter system prompt for faster processing
         self.system_prompt = (
-            "You are Orin, a thoughtful AI companion and reasoning partner running locally on this machine. "
-            "You were created by Obard to be a helpful, reliable assistant for technical and analytical tasks.\n\n"
-
-            "Your core strengths:\n"
-            "- Clear, methodical thinking with step-by-step reasoning\n"
-            "- Honest assessment of what you know and don't know\n"
-            "- Practical, actionable solutions to problems\n"
-            "- Friendly but professional communication style\n\n"
-
-            "When approaching problems:\n"
-            "1. Break down complex questions into manageable components\n"
-            "2. Show your reasoning process transparently\n"
-            "3. Consider multiple perspectives when relevant\n"
-            "4. Provide clear, well-structured answers\n"
-            "5. Acknowledge uncertainty and suggest verification steps\n\n"
-
-            "You're here to help think through problems, not just provide answers. "
-            "Engage with curiosity, ask clarifying questions when needed, and always strive to be genuinely helpful."
+            "You are Orin, a helpful AI assistant. Be concise, clear, and accurate. "
+            "Think step-by-step for complex questions."
         )
 
     def add_message(self, role: str, content: str):
@@ -84,13 +69,14 @@ def print_help():
     help_text = f"""
 {CYAN}{BOLD}Orin REPL Commands:{RESET}
 
-{GREEN}/help{RESET}        Show this help message
-{GREEN}/clear{RESET}       Clear conversation history
-{GREEN}/new{RESET}         Start a new conversation session
-{GREEN}/thinking{RESET}    Toggle thinking display mode (auto/always/never)
-{GREEN}/stats{RESET}       Show session statistics
-{GREEN}/debug{RESET}       Show last raw model output for debugging
-{GREEN}/exit{RESET}        Exit Orin (or use Ctrl+C)
+{GREEN}/help{RESET}         Show this help message
+{GREEN}/clear{RESET}        Clear conversation history
+{GREEN}/new{RESET}          Start a new conversation session
+{GREEN}/thinking{RESET}     Toggle thinking display mode (auto/always/never)
+{GREEN}/interleaved{RESET}  Toggle interleaved reasoning (model verifies answers)
+{GREEN}/stats{RESET}        Show session statistics
+{GREEN}/debug{RESET}        Show last raw model output for debugging
+{GREEN}/exit{RESET}         Exit Orin (or use Ctrl+C)
 
 {CYAN}{BOLD}Tips:{RESET}
 • Type naturally - no special syntax needed
@@ -210,6 +196,15 @@ def run_repl():
                 print(f"{GREEN}✓ Thinking display mode: {BOLD}{next_mode}{RESET}")
                 continue
 
+            elif cmd == '/interleaved':
+                if session.reasoning_mode == "standard":
+                    session.reasoning_mode = "interleaved"
+                    print(f"{GREEN}✓ Interleaved reasoning: {BOLD}ON{RESET} (model verifies its own answers)")
+                else:
+                    session.reasoning_mode = "standard"
+                    print(f"{GREEN}✓ Interleaved reasoning: {BOLD}OFF{RESET}")
+                continue
+
             elif cmd == '/stats':
                 print(f"\n{session.get_stats()}")
                 print(f"{GREY}System: {session.system_prompt[:100]}...{RESET}\n")
@@ -244,11 +239,11 @@ def run_repl():
         thinking_indicator = f"{GREY}[thinking: {'on' if show_thinking else 'off'}]{RESET} "
         print(f"\n{thinking_indicator}", end='')
 
-        # Start loading animation
+        # Start thinking animation
         stop_event = threading.Event()
         loading_thread = threading.Thread(
             target=loading_animation,
-            args=(stop_event, "Loading model")
+            args=(stop_event, "Thinking")
         )
         loading_thread.start()
 
@@ -256,15 +251,53 @@ def run_repl():
         try:
             start_time = time.time()
 
-            # Use conversation context
-            from .llamacpp_client import chat_with_llamacpp
-            response = chat_with_llamacpp(
-                messages=session.get_messages_for_llm(),
-                temperature=0.2,
-                max_tokens=2048,
-                stream=True,
-                show_thinking=show_thinking,
-            )
+            # Choose reasoning strategy
+            if session.reasoning_mode == "interleaved":
+                # Use interleaved reasoning (slower but more accurate)
+                from .reasoning import interleaved_reasoning
+                from .llamacpp_client import chat_with_llamacpp
+
+                # Build messages
+                messages = session.get_messages_for_llm()
+
+                # Initial response
+                print(f"\n{GREY}[Step 1: Initial answer]{RESET}\n")
+                response = chat_with_llamacpp(
+                    messages=messages,
+                    temperature=0.3,
+                    max_tokens=512,
+                    stream=True,
+                    show_thinking=show_thinking,
+                )
+
+                # Verification step
+                print(f"\n{GREY}[Step 2: Verification]{RESET}\n")
+                verify_msg = messages + [
+                    {"role": "assistant", "content": response},
+                    {"role": "user", "content": "Verify your answer. Any corrections needed?"}
+                ]
+                verification = chat_with_llamacpp(
+                    messages=verify_msg,
+                    temperature=0.2,
+                    max_tokens=256,
+                    stream=True,
+                    show_thinking=False,
+                )
+
+                # If verification suggests changes, use those
+                if not any(word in verification.lower() for word in ["correct", "verified", "good", "accurate"]):
+                    response = verification
+
+            else:
+                # Standard mode
+                from .llamacpp_client import chat_with_llamacpp
+                response = chat_with_llamacpp(
+                    messages=session.get_messages_for_llm(),
+                    temperature=0.2,
+                    max_tokens=1024,  # Reduced for faster responses
+                    stream=True,
+                    show_thinking=show_thinking,
+                )
 
             elapsed = time.time() - start_time
             last_raw_output = response

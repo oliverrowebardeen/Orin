@@ -71,11 +71,11 @@ def chat_with_llamacpp(
         "--temp",
         str(temperature),
         "-ngl", "0",  # CPU-only (no GPU on Dell XPS)
-        "-e",
-        "-c", "4096",  # Context window
-        "-b", "512",  # Batch size for prompt processing
+        "-c", "2048",  # Context window (reduced for speed)
+        "-b", "1024",  # Batch size for prompt processing (increased)
         "--threads", "8",  # Use multiple CPU threads
         "--no-mmap",  # Disable memory mapping for USB (faster random access)
+        "--log-disable",  # Disable logging for cleaner output
     ]
 
     if stream:
