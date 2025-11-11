@@ -68,7 +68,7 @@ def should_show_thinking(question: str) -> bool:
 
 def one_reasoning_run(
     question: str,
-    temperature: float = 0.2,
+    temperature: float = 0.0,  # Greedy sampling for speed
     stream: bool = True,
 ) -> str:
     """

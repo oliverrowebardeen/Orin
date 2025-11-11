@@ -29,25 +29,25 @@ class ConversationSession:
 
     def __init__(self):
         self.messages: List[Dict[str, str]] = []
-        self.show_thinking_mode = "auto"  # auto, always, never
+        self.show_thinking_mode = "never"  # Default to never for speed
         self.reasoning_mode = "standard"  # standard, interleaved
         self.start_time = datetime.now()
         self.total_tokens = 0
         self.total_questions = 0
+        self.max_history = 5  # Keep only last 5 exchanges for speed
 
-        # Shorter system prompt for faster processing
-        self.system_prompt = (
-            "You are Orin, a helpful AI assistant. Be concise, clear, and accurate. "
-            "Think step-by-step for complex questions."
-        )
+        # Minimal system prompt for speed
+        self.system_prompt = "You are Orin, a helpful AI assistant. Be concise."
 
     def add_message(self, role: str, content: str):
         """Add a message to the conversation history."""
         self.messages.append({"role": role, "content": content})
 
     def get_messages_for_llm(self) -> List[Dict[str, str]]:
-        """Get formatted messages including system prompt."""
-        return [{"role": "system", "content": self.system_prompt}] + self.messages
+        """Get formatted messages including system prompt. Limited history for speed."""
+        # Only keep last N messages for speed on weak hardware
+        recent_messages = self.messages[-(self.max_history * 2):] if len(self.messages) > self.max_history * 2 else self.messages
+        return [{"role": "system", "content": self.system_prompt}] + recent_messages
 
     def clear_history(self):
         """Clear conversation history but keep system prompt."""
@@ -293,8 +293,8 @@ def run_repl():
                 from .llamacpp_client import chat_with_llamacpp
                 response = chat_with_llamacpp(
                     messages=session.get_messages_for_llm(),
-                    temperature=0.2,
-                    max_tokens=1024,  # Reduced for faster responses
+                    temperature=0.0,  # Greedy sampling = fastest
+                    max_tokens=512,  # Short responses for speed
                     stream=True,
                     show_thinking=show_thinking,
                 )
